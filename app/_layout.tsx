@@ -3,13 +3,6 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/useAuthStore';
-// NativeWind styles are pre-generated (no Metro transformer needed for Expo SDK 56 compat)
-// Run: node scripts/generate-nativewind-styles.js  to regenerate after Tailwind config changes
-import { nativewindStyles } from '../src/styles/nativewind-styles.generated';
-import { injectData } from 'react-native-css-interop/dist/runtime/native/styles';
-
-// Inject pre-generated Tailwind styles into the NativeWind runtime
-injectData(nativewindStyles as any);
 
 function RootLayoutNav() {
   const { session, profile, isInitialized, initialize } = useAuthStore();
