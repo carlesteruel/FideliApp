@@ -1,0 +1,24 @@
+diff --git a/node_modules/expo-modules-core/android/build.gradle b/node_modules/expo-modules-core/android/build.gradle
+index de209ce..b3b4300 100644
+--- a/node_modules/expo-modules-core/android/build.gradle
++++ b/node_modules/expo-modules-core/android/build.gradle
+@@ -291,11 +291,17 @@ def generateStubPCHTask = tasks.register("generateStubPCH") {
+           def stubHeader = new File(entry.directory, "stub_pch.hxx")
+           stubHeader.text = ""
+ 
++          // Use forward slashes for the injected path. On Windows clang accepts
++          // them and, more importantly, this avoids `String.replaceAll` treating
++          // the backslashes in the path as regex escape sequences (which would
++          // silently eat them and yield a mangled path like "D:Projects...").
++          def stubHeaderPath = stubHeader.absolutePath.replace('\\', '/')
++
+           def cmd = entry.command
+             // Replace the forced-include path: `-Xclang -include -Xclang <path>/cmake_pch.hxx`
+-            .replaceAll(/-Xclang -include -Xclang [^\s]+cmake_pch\.hxx(?=\s)/, "-Xclang -include -Xclang ${stubHeader.absolutePath}")
++            .replaceAll(/-Xclang -include -Xclang [^\s]+cmake_pch\.hxx(?=\s)/, "-Xclang -include -Xclang ${stubHeaderPath}")
+             // Replace the source file operand: `<path>/cmake_pch.hxx.cxx`
+-            .replaceAll(/[^\s]+cmake_pch\.hxx\.cxx/, stubHeader.absolutePath)
++            .replaceAll(/[^\s]+cmake_pch\.hxx\.cxx/, stubHeaderPath)
+ 
+           def process = new ProcessBuilder(cmd.split(" ").toList())
+             .directory(new File(entry.directory))

@@ -1,239 +1,349 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, RefreshControl,
+  ActivityIndicator, StyleSheet, Image, ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { supabase } from '../../src/lib/supabase';
-import { Business, CampaignWithBusiness } from '../../src/types/database';
+import { CampaignWithBusiness } from '../../src/types/database';
+import { colors, fonts } from '../../src/theme';
+import {
+  CATEGORY_COLORS, CATEGORY_EMOJI, CATEGORY_LABEL, getCoverSource,
+} from '../../src/constants/businessAssets';
+import { PressableScale } from '../../src/components/ui/PressableScale';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 
 const CATEGORY_FILTERS = [
-  { id: 'all', label: '🌟 Todos' },
-  { id: 'cafe', label: '☕ Cafés' },
+  { id: 'all',        label: '🌟 Todos' },
+  { id: 'cafe',       label: '☕ Cafés' },
   { id: 'restaurant', label: '🍽️ Restaurantes' },
-  { id: 'bar', label: '🍺 Bares' },
-  { id: 'bakery', label: '🥐 Panaderías' },
-  { id: 'pizza', label: '🍕 Pizzerías' },
-  { id: 'fast_food', label: '🍔 Fast food' },
+  { id: 'bar',        label: '🍺 Bares' },
+  { id: 'bakery',     label: '🥐 Panaderías' },
+  { id: 'pizza',      label: '🍕 Pizzerías' },
+  { id: 'fast_food',  label: '🍔 Fast food' },
 ];
 
+interface BusinessWithCampaigns {
+  id:            string;
+  name:          string;
+  logo_url:      string | null;
+  cover_url:     string | null;
+  card_color:    string | null;
+  city:          string | null;
+  category:      string;
+  campaignCount: number;
+}
+
 export default function HomeScreen() {
+  const router = useRouter();
   const { profile } = useAuthStore();
-  const [campaigns, setCampaigns] = useState<CampaignWithBusiness[]>([]);
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [businesses,    setBusinesses]    = useState<BusinessWithCampaigns[]>([]);
+  const [campaignTotal, setCampaignTotal] = useState(0);
+  const [loading,       setLoading]       = useState(true);
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [activeFilter,  setActiveFilter]  = useState('all');
+
+  // Banner de cumpleaños
+  const [birthdayCount,   setBirthdayCount]   = useState(0);
+  const [birthdayDismiss, setBirthdayDismiss] = useState(false);
+
+  const claimBirthdayRewards = useCallback(async () => {
+    try {
+      const { data } = await supabase.rpc('claim_birthday_reward');
+      if (data?.success && Array.isArray(data.rewards_created) && data.rewards_created.length > 0) {
+        setBirthdayCount(data.rewards_created.length);
+        setBirthdayDismiss(false);
+      }
+    } catch (e) {
+      console.warn('claim_birthday_reward error:', e);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { claimBirthdayRewards(); }, [claimBirthdayRewards]));
 
   const fetchData = async () => {
     try {
-      // Obtener campañas activas con datos del negocio
-      const { data: campaignData } = await supabase
+      const { data: c } = await supabase
         .from('campaigns')
-        .select(`
-          *,
-          businesses (id, name, logo_url, city, category)
-        `)
+        .select('*, businesses (id, name, logo_url, cover_url, card_color, city, category)')
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
 
-      // Obtener negocios destacados
-      const { data: businessData } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const campaigns = (c ?? []) as CampaignWithBusiness[];
+      setCampaignTotal(campaigns.length);
 
-      if (campaignData) setCampaigns(campaignData as CampaignWithBusiness[]);
-      if (businessData) setBusinesses(businessData);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      const map = new Map<string, BusinessWithCampaigns>();
+      for (const camp of campaigns) {
+        const b = camp.businesses;
+        if (!b) continue;
+        const existing = map.get(b.id);
+        if (existing) {
+          existing.campaignCount += 1;
+        } else {
+          map.set(b.id, {
+            id: b.id, name: b.name, logo_url: b.logo_url, cover_url: b.cover_url,
+            card_color: b.card_color, city: b.city, category: b.category, campaignCount: 1,
+          });
+        }
+      }
+      setBusinesses(Array.from(map.values()));
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); setRefreshing(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
-
-  const onRefresh = () => { setRefreshing(true); fetchData(); };
-
-  const filteredCampaigns = activeFilter === 'all'
-    ? campaigns
-    : campaigns.filter((c) => c.businesses.category === activeFilter);
+  const onRefresh = () => { setRefreshing(true); fetchData(); claimBirthdayRewards(); };
+  const filtered  = activeFilter === 'all' ? businesses : businesses.filter((b) => b.category === activeFilter);
 
   const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '🌅 Buenos días';
-    if (hour < 20) return '☀️ Buenas tardes';
-    return '🌙 Buenas noches';
+    const h = new Date().getHours();
+    return h < 12 ? '🌅 Buenos días' : h < 20 ? '☀️ Buenas tardes' : '🌙 Buenas noches';
   };
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#6C3DF4" />
+      <SafeAreaView style={s.center}>
+        <ActivityIndicator size="large" color={colors.primary500} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView style={s.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C3DF4" />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary500} />
+        }
       >
-        {/* Header */}
-        <View className="px-5 pt-4 pb-5 bg-white">
-          <Text className="text-gray-500 text-sm">{greeting()}</Text>
-          <Text className="text-gray-900 text-2xl font-bold mt-0.5">
-            {profile?.full_name?.split(' ')[0]} 👋
-          </Text>
-          <Text className="text-gray-400 text-sm mt-1">
-            Descubre campañas y acumula premios
-          </Text>
-        </View>
-
-        {/* Stats rápidas */}
-        <View className="px-5 py-4 flex-row gap-3">
-          <View className="flex-1 bg-primary-500 rounded-2xl p-4">
-            <Text className="text-white/70 text-xs font-medium">Negocios</Text>
-            <Text className="text-white text-2xl font-bold">{businesses.length}</Text>
-            <Text className="text-white/70 text-xs">participantes</Text>
-          </View>
-          <View className="flex-1 bg-secondary-500 rounded-2xl p-4">
-            <Text className="text-white/70 text-xs font-medium">Campañas</Text>
-            <Text className="text-white text-2xl font-bold">{campaigns.length}</Text>
-            <Text className="text-white/70 text-xs">activas ahora</Text>
-          </View>
-        </View>
-
-        {/* Filtros de categoría */}
-        <View className="mb-2">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        {/* ── Banner cumpleaños ── */}
+        {birthdayCount > 0 && !birthdayDismiss && (
+          <TouchableOpacity
+            style={s.birthdayBanner}
+            activeOpacity={0.88}
+            onPress={() => { setBirthdayDismiss(true); router.push('/(client)/rewards'); }}
           >
-            {CATEGORY_FILTERS.map((filter) => (
-              <TouchableOpacity
-                key={filter.id}
-                onPress={() => setActiveFilter(filter.id)}
-                className={`
-                  px-4 py-2.5 rounded-full border
-                  ${activeFilter === filter.id
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'}
-                `}
-              >
-                <Text className={`text-sm font-semibold ${activeFilter === filter.id ? 'text-white' : 'text-gray-600'}`}>
-                  {filter.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Campañas destacadas */}
-        <View className="px-5 mt-4">
-          <Text className="text-gray-900 text-lg font-bold mb-4">
-            🔥 Campañas activas
-          </Text>
-        </View>
-
-        {filteredCampaigns.length === 0 ? (
-          <View className="items-center py-12 px-8">
-            <Text className="text-5xl mb-4">🔍</Text>
-            <Text className="text-gray-700 font-bold text-lg text-center">
-              No hay campañas en esta categoría
-            </Text>
-            <Text className="text-gray-400 text-sm text-center mt-2">
-              Prueba con otra categoría
-            </Text>
-          </View>
-        ) : (
-          filteredCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} />
-          ))
+            <View style={s.birthdayBannerLeft}>
+              <Text style={{ fontSize: 36 }}>🎂</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.birthdayBannerTitle}>¡Feliz cumpleaños! 🎉</Text>
+              <Text style={s.birthdayBannerSub}>
+                {birthdayCount === 1
+                  ? 'Tienes 1 nuevo premio de cumpleaños'
+                  : `Tienes ${birthdayCount} nuevos premios de cumpleaños`}
+                {' · '}<Text style={{ fontWeight: '700' }}>Ver premios →</Text>
+              </Text>
+            </View>
+            <TouchableOpacity hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }} onPress={() => setBirthdayDismiss(true)}>
+              <Text style={s.birthdayBannerClose}>✕</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         )}
 
-        <View className="h-8" />
+        {/* ── Header con gradiente ── */}
+        <LinearGradient
+          colors={[colors.surface, colors.background]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={s.header}
+        >
+          <Text style={s.greeting}>{greeting()}</Text>
+          <Text style={s.username}>
+            {profile?.full_name?.split(' ')[0] ?? 'Usuario'} 👋
+          </Text>
+          <Text style={s.headerSub}>Descubre locales y acumula premios</Text>
+        </LinearGradient>
+
+        {/* ── Stats ── */}
+        <View style={s.statsRow}>
+          <View style={[s.statCard, { backgroundColor: colors.primary500 }]}>
+            <Text style={s.statLabel}>Locales</Text>
+            <Text style={s.statNum}>{businesses.length}</Text>
+            <Text style={s.statSub}>con campañas</Text>
+          </View>
+          <View style={[s.statCard, { backgroundColor: colors.accent }]}>
+            <Text style={s.statLabel}>Campañas</Text>
+            <Text style={s.statNum}>{campaignTotal}</Text>
+            <Text style={s.statSub}>activas ahora</Text>
+          </View>
+        </View>
+
+        {/* ── Filtros ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+          style={{ marginBottom: 8 }}
+        >
+          {CATEGORY_FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f.id}
+              onPress={() => setActiveFilter(f.id)}
+              style={[s.filterBtn, activeFilter === f.id ? s.filterActive : s.filterInactive]}
+            >
+              <Text style={[s.filterText, { color: activeFilter === f.id ? colors.white : colors.gray600 }]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={s.sectionTitle}>
+          <Text style={s.sectionTitleText}>🏪 Locales con campañas</Text>
+        </View>
+
+        {filtered.length === 0 ? (
+          <EmptyState
+            variant="cards"
+            title="¡Aquí no hay nadie!"
+            subtitle="Prueba con otra categoría o espera a que más negocios se unan a FideliApp"
+          />
+        ) : (
+          filtered.map((b) => (
+            <BusinessCard
+              key={b.id}
+              business={b}
+              onPress={() => router.push({ pathname: '/(client)/business/[id]', params: { id: b.id } })}
+            />
+          ))
+        )}
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function CampaignCard({ campaign }: { campaign: CampaignWithBusiness }) {
-  const business = campaign.businesses;
-  const config = campaign.config as { total_stamps?: number };
-
-  const CATEGORY_COLORS: Record<string, string> = {
-    cafe: '#6C3DF4', restaurant: '#EF4444', bar: '#F59E0B',
-    bakery: '#EC4899', fast_food: '#F97316', pizza: '#10B981',
-    sushi: '#3B82F6', other: '#6B7280',
-  };
-  const cardColor = CATEGORY_COLORS[business.category] ?? '#6C3DF4';
+// ── Tarjeta de negocio con PressableScale ─────────────────────────────
+function BusinessCard({ business, onPress }: { business: BusinessWithCampaigns; onPress: () => void }) {
+  const color    = business.card_color ?? CATEGORY_COLORS[business.category] ?? colors.primary500;
+  const coverUri = getCoverSource(business.cover_url, business.category);
 
   return (
-    <TouchableOpacity
-      className="mx-5 mb-4 bg-white rounded-2xl overflow-hidden shadow-sm"
-      activeOpacity={0.88}
-      style={{ elevation: 3 }}
+    <PressableScale
+      onPress={onPress}
+      style={s.bizCard}
+      scaleValue={0.97}
     >
-      {/* Banda de color */}
-      <View className="h-2" style={{ backgroundColor: cardColor }} />
+      {/* Imagen de portada */}
+      <ImageBackground
+        source={{ uri: coverUri }}
+        style={[s.bizCoverBg, { backgroundColor: color }]}
+        imageStyle={s.bizCoverImg}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={[`${color}66`, '#00000055']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
 
-      <View className="p-4">
-        <View className="flex-row items-center mb-3">
-          <View
-            className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-            style={{ backgroundColor: `${cardColor}20` }}
-          >
-            <Text className="text-xl">
-              {business.category === 'cafe' ? '☕' :
-               business.category === 'restaurant' ? '🍽️' :
-               business.category === 'bar' ? '🍺' :
-               business.category === 'bakery' ? '🥐' :
-               business.category === 'pizza' ? '🍕' :
-               business.category === 'sushi' ? '🍱' :
-               business.category === 'fast_food' ? '🍔' : '🏪'}
-            </Text>
-          </View>
-          <View className="flex-1">
-            <Text className="text-gray-500 text-xs">{business.name}</Text>
-            <Text className="text-gray-900 font-bold" numberOfLines={1}>{campaign.name}</Text>
-          </View>
-          <View className="bg-green-100 rounded-full px-2 py-1">
-            <Text className="text-green-700 text-xs font-semibold">Activa</Text>
-          </View>
+        {/* Badge campañas */}
+        <View style={[s.campaignsBadge, { backgroundColor: color }]}>
+          <Text style={s.campaignsBadgeText}>
+            {business.campaignCount} campaña{business.campaignCount !== 1 ? 's' : ''}
+          </Text>
         </View>
 
-        {campaign.description && (
-          <Text className="text-gray-500 text-sm mb-3" numberOfLines={2}>
-            {campaign.description}
+        {/* Badge categoría */}
+        <View style={s.categoryBadge}>
+          <Text style={s.categoryBadgeText}>
+            {CATEGORY_EMOJI[business.category]}  {CATEGORY_LABEL[business.category] ?? 'Negocio'}
           </Text>
+        </View>
+      </ImageBackground>
+
+      {/* Info */}
+      <View style={s.bizBody}>
+        {business.logo_url ? (
+          <Image
+            source={{ uri: business.logo_url }}
+            style={[s.bizLogoImg, { borderColor: `${color}44` }]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[s.bizIcon, { backgroundColor: `${color}18` }]}>
+            <Text style={{ fontSize: 22 }}>{CATEGORY_EMOJI[business.category] ?? '🏪'}</Text>
+          </View>
         )}
 
-        <View className="flex-row items-center bg-gray-50 rounded-xl px-3 py-2">
-          <Text className="text-xl mr-2">🎁</Text>
-          <Text className="text-gray-700 text-sm font-medium flex-1" numberOfLines={1}>
-            {campaign.reward_description}
-          </Text>
-          {config.total_stamps && (
-            <Text className="text-gray-400 text-xs ml-2">
-              {config.total_stamps} sellos
-            </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.bizName} numberOfLines={1}>{business.name}</Text>
+          {business.city && (
+            <Text style={s.bizCity} numberOfLines={1}>📍 {business.city}</Text>
           )}
         </View>
+        <Text style={s.bizArrow}>›</Text>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
+
+const s = StyleSheet.create({
+  screen:  { flex: 1, backgroundColor: colors.background },
+  center:  { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+
+  // ── Birthday banner ─────────────────────────────────────────
+  birthdayBanner:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary500, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  birthdayBannerLeft:  { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  birthdayBannerTitle: { color: colors.white, fontWeight: '700', fontFamily: fonts.bold, fontSize: 15 },
+  birthdayBannerSub:   { color: 'rgba(255,255,255,0.88)', fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
+  birthdayBannerClose: { color: 'rgba(255,255,255,0.75)', fontSize: 18, paddingHorizontal: 4 },
+
+  // ── Header ──────────────────────────────────────────────────
+  header:    { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 },
+  greeting:  { color: colors.gray500, fontFamily: fonts.regular, fontSize: 14 },
+  username:  { color: colors.accent, fontSize: 26, fontWeight: '800', fontFamily: fonts.extrabold, marginTop: 2 },
+  headerSub: { color: colors.gray400, fontFamily: fonts.regular, fontSize: 14, marginTop: 4 },
+
+  // ── Stats ────────────────────────────────────────────────────
+  statsRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingBottom: 16 },
+  statCard: { flex: 1, borderRadius: 20, padding: 16 },
+  statLabel:{ color: 'rgba(255,255,255,0.75)', fontSize: 12, fontFamily: fonts.semibold },
+  statNum:  { color: colors.white, fontSize: 28, fontWeight: '800', fontFamily: fonts.extrabold, marginTop: 2 },
+  statSub:  { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: fonts.regular },
+
+  // ── Filtros ──────────────────────────────────────────────────
+  filterBtn:     { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 99, borderWidth: 1 },
+  filterActive:  { backgroundColor: colors.primary500, borderColor: colors.primary500 },
+  filterInactive:{ backgroundColor: colors.surface, borderColor: colors.gray200 },
+  filterText:    { fontSize: 14, fontFamily: fonts.semibold },
+
+  // ── Section title ────────────────────────────────────────────
+  sectionTitle:     { paddingHorizontal: 20, marginTop: 8, marginBottom: 16 },
+  sectionTitleText: { color: colors.accent, fontSize: 18, fontWeight: '700', fontFamily: fonts.bold },
+
+  // ── BusinessCard ─────────────────────────────────────────────
+  bizCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+
+  bizCoverBg:  { height: 130, width: '100%', justifyContent: 'flex-end' },
+  bizCoverImg: { opacity: 0.78 },
+
+  campaignsBadge:    { position: 'absolute', top: 12, right: 12, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
+  campaignsBadgeText:{ color: colors.white, fontSize: 11, fontWeight: '700', fontFamily: fonts.bold },
+
+  categoryBadge:    { position: 'absolute', bottom: 10, left: 12, backgroundColor: 'rgba(0,0,0,0.38)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
+  categoryBadgeText:{ color: colors.white, fontSize: 11, fontWeight: '600', fontFamily: fonts.semibold },
+
+  bizBody:   { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  bizLogoImg:{ width: 48, height: 48, borderRadius: 14, borderWidth: 2 },
+  bizIcon:   { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  bizName:   { color: colors.accent, fontWeight: '700', fontFamily: fonts.bold, fontSize: 16 },
+  bizCity:   { color: colors.gray500, fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
+  bizArrow:  { color: colors.gray300, fontSize: 28 },
+});

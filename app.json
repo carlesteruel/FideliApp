@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6C3DF4"
+      "backgroundColor": "#FF6B2B"
     },
     "ios": {
       "supportsTablet": true,
@@ -47,6 +47,12 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Necesitamos acceso a tu galería para subir el logo e imagen de fondo de tu negocio."
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Necesitamos acceso a la cámara para escanear códigos QR."
@@ -56,10 +62,12 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#6C3DF4",
+          "color": "#FF6B2B",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-splash-screen"
     ],
     "experiments": {
       "typedRoutes": true

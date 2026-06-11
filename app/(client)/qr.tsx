@@ -1,16 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { supabase } from '../../src/lib/supabase';
+import { colors } from '../../src/theme';
 
 const QR_VALIDITY_MINUTES = 5;
 
@@ -25,28 +20,30 @@ export default function QRScreen() {
   const generateToken = async () => {
     if (!user) return;
     setLoading(true);
-
     try {
-      // Invalidar tokens anteriores no usados
-      await supabase
-        .from('customer_qr_tokens')
-        .update({ used: true })
-        .eq('customer_id', user.id)
-        .eq('used', false);
-
-      // Crear nuevo token
+      // 1) Insertamos el nuevo token (su expires_at lo pone el DEFAULT del servidor)
       const { data, error } = await supabase
         .from('customer_qr_tokens')
         .insert({ customer_id: user.id })
         .select()
         .single();
-
       if (error || !data) throw error;
+      const d = data as any;
 
-      const tokenData = data as any;
-      setToken(tokenData.token);
-      setExpiresAt(new Date(tokenData.expires_at));
-      setSecondsLeft(QR_VALIDITY_MINUTES * 60);
+      // 2) Solo cuando el nuevo existe, invalidamos los anteriores (sin tocar este)
+      await supabase
+        .from('customer_qr_tokens')
+        .update({ used: true })
+        .eq('customer_id', user.id)
+        .eq('used', false)
+        .neq('id', d.id);
+
+      const exp = new Date(d.expires_at);
+      setToken(d.token);
+      setExpiresAt(exp);
+      // Calculamos los segundos restantes con el tiempo real del servidor,
+      // no asumimos QR_VALIDITY_MINUTES fijo (evita desfases de reloj).
+      setSecondsLeft(Math.max(0, Math.floor((exp.getTime() - Date.now()) / 1000)));
     } catch (e) {
       Alert.alert('Error', 'No se pudo generar el código QR');
     } finally {
@@ -54,116 +51,72 @@ export default function QRScreen() {
     }
   };
 
-  // Generar token al entrar a la pantalla
-  useFocusEffect(useCallback(() => {
-    generateToken();
-    return () => {};
-  }, [user]));
+  useFocusEffect(useCallback(() => { generateToken(); return () => {}; }, [user]));
 
-  // Countdown timer
   useEffect(() => {
     if (!expiresAt) return;
-
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-      setSecondsLeft(remaining);
-      if (remaining === 0) {
-        clearInterval(interval);
-      }
+      const r = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+      setSecondsLeft(r);
+      if (r === 0) clearInterval(interval);
     }, 1000);
-
     return () => clearInterval(interval);
   }, [expiresAt]);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
   const qrValue = token ? `fideliapp://qr/${token}` : '';
   const isExpired = secondsLeft === 0 && !loading;
-  const progressPct = (secondsLeft / (QR_VALIDITY_MINUTES * 60)) * 100;
+  const pct = (secondsLeft / (QR_VALIDITY_MINUTES * 60)) * 100;
+  const timerColor = secondsLeft < 60 ? colors.red400 : secondsLeft < 120 ? colors.yellow400 : colors.primary500;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="flex-row items-center px-5 pt-4 pb-2">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3"
-        >
-          <Text className="text-xl">←</Text>
+    <SafeAreaView style={s.screen}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={{ fontSize: 20 }}>←</Text>
         </TouchableOpacity>
-        <Text className="text-gray-900 text-xl font-bold">Mi código QR</Text>
+        <Text style={s.headerTitle}>Mi código QR</Text>
       </View>
 
-      <View className="flex-1 items-center justify-center px-8">
+      <View style={s.body}>
         {loading ? (
-          <ActivityIndicator size="large" color="#6C3DF4" />
+          <ActivityIndicator size="large" color={colors.primary500} />
         ) : (
           <>
-            {/* Nombre del cliente */}
-            <Text className="text-gray-500 text-sm text-center mb-1">
-              Muestra este código al negocio
-            </Text>
-            <Text className="text-gray-900 text-2xl font-bold text-center mb-6">
-              {profile?.full_name}
-            </Text>
+            <Text style={s.subtext}>Muestra este código al negocio</Text>
+            <Text style={s.nameText}>{profile?.full_name}</Text>
 
-            {/* QR Code */}
-            <View className={`p-5 rounded-3xl shadow-xl border-4 ${isExpired ? 'border-red-200 opacity-40' : 'border-primary-500'}`} style={{ elevation: 8 }}>
+            <View style={[s.qrBox, { borderColor: isExpired ? colors.red100 : colors.primary500, opacity: isExpired ? 0.4 : 1, elevation: 8 }]}>
               {!isExpired && qrValue ? (
-                <QRCode
-                  value={qrValue}
-                  size={220}
-                  color="#1F2937"
-                  backgroundColor="#FFFFFF"
-                  logo={undefined}
-                  quietZone={10}
-                />
+                <QRCode value={qrValue} size={220} color={colors.gray900} backgroundColor={colors.white} quietZone={10} />
               ) : (
-                <View className="w-[220px] h-[220px] items-center justify-center">
-                  <Text className="text-5xl mb-2">⏰</Text>
-                  <Text className="text-gray-500 text-center font-medium">QR Expirado</Text>
+                <View style={s.expiredBox}>
+                  <Text style={{ fontSize: 48, marginBottom: 8 }}>⏰</Text>
+                  <Text style={s.expiredText}>QR Expirado</Text>
                 </View>
               )}
             </View>
 
-            {/* Timer */}
             {!isExpired && (
-              <View className="items-center mt-6 w-full">
-                {/* Barra de progreso */}
-                <View className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-                  <View
-                    className={`h-full rounded-full ${secondsLeft < 60 ? 'bg-red-400' : secondsLeft < 120 ? 'bg-yellow-400' : 'bg-primary-500'}`}
-                    style={{ width: `${progressPct}%` }}
-                  />
+              <View style={s.timerBlock}>
+                <View style={s.progressBg}>
+                  <View style={[s.progressFill, { width: `${pct}%` as any, backgroundColor: timerColor }]} />
                 </View>
-                <Text className={`font-bold text-lg ${secondsLeft < 60 ? 'text-red-500' : 'text-gray-700'}`}>
-                  ⏱ Válido {formatTime(secondsLeft)}
+                <Text style={[s.timerText, { color: secondsLeft < 60 ? colors.red500 : colors.gray700 }]}>
+                  ⏱ Válido {fmt(secondsLeft)}
                 </Text>
-                <Text className="text-gray-400 text-xs mt-1">
-                  Solo puede usarse una vez
-                </Text>
+                <Text style={s.timerSub}>Solo puede usarse una vez</Text>
               </View>
             )}
 
-            {/* Botón regenerar */}
-            <TouchableOpacity
-              className={`mt-6 px-8 py-4 rounded-2xl ${isExpired ? 'bg-primary-500' : 'bg-gray-100'}`}
-              onPress={generateToken}
-            >
-              <Text className={`font-bold text-base text-center ${isExpired ? 'text-white' : 'text-gray-600'}`}>
+            <TouchableOpacity onPress={generateToken} style={[s.regenBtn, { backgroundColor: isExpired ? colors.primary500 : colors.gray100 }]}>
+              <Text style={[s.regenText, { color: isExpired ? colors.white : colors.gray600 }]}>
                 🔄 {isExpired ? 'Generar nuevo QR' : 'Regenerar QR'}
               </Text>
             </TouchableOpacity>
 
-            {/* Info */}
-            <View className="mt-6 bg-primary-50 rounded-2xl px-5 py-4 w-full">
-              <Text className="text-primary-700 text-sm text-center leading-5">
-                💡 El negocio escaneará este QR para añadir un sello a tu tarjeta de fidelización
-              </Text>
+            <View style={s.infoBox}>
+              <Text style={s.infoText}>💡 El negocio escaneará este QR para añadir un sello a tu tarjeta de fidelización</Text>
             </View>
           </>
         )}
@@ -171,3 +124,25 @@ export default function QRScreen() {
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  screen:      { flex: 1, backgroundColor: colors.white },
+  header:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  backBtn:     { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  headerTitle: { color: colors.gray900, fontSize: 20, fontWeight: '700' },
+  body:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  subtext:     { color: colors.gray500, fontSize: 14, textAlign: 'center', marginBottom: 4 },
+  nameText:    { color: colors.gray900, fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 24 },
+  qrBox:       { padding: 20, borderRadius: 24, borderWidth: 4 },
+  expiredBox:  { width: 220, height: 220, alignItems: 'center', justifyContent: 'center' },
+  expiredText: { color: colors.gray500, fontWeight: '500', textAlign: 'center' },
+  timerBlock:  { alignItems: 'center', marginTop: 24, width: '100%' },
+  progressBg:  { width: '100%', height: 8, backgroundColor: colors.gray100, borderRadius: 99, overflow: 'hidden', marginBottom: 8 },
+  progressFill:{ height: '100%', borderRadius: 99 },
+  timerText:   { fontWeight: '700', fontSize: 18 },
+  timerSub:    { color: colors.gray400, fontSize: 12, marginTop: 4 },
+  regenBtn:    { marginTop: 24, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 16 },
+  regenText:   { fontWeight: '700', fontSize: 16, textAlign: 'center' },
+  infoBox:     { marginTop: 24, backgroundColor: colors.primary50, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16, width: '100%' },
+  infoText:    { color: colors.primary600, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+});

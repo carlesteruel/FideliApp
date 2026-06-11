@@ -3,7 +3,17 @@
 // ============================================================
 
 export type UserRole = 'client' | 'business' | 'admin';
-export type CampaignType = 'punch_card' | 'points' | 'birthday' | 'streak' | 'cashback' | 'referral';
+export type CampaignType =
+  | 'punch_card'
+  | 'points'
+  | 'birthday'
+  | 'streak'
+  | 'cashback'
+  | 'referral'
+  | 'first_visit'
+  | 'min_spend'
+  | 'monthly_visits';
+export type CampaignStatus = 'active' | 'ended' | 'archived';
 export type RewardStatus = 'pending' | 'redeemed' | 'expired';
 export type BusinessCategory = 'restaurant' | 'cafe' | 'bar' | 'bakery' | 'fast_food' | 'pizza' | 'sushi' | 'other';
 
@@ -34,6 +44,17 @@ export interface ReferralConfig {
   referrer_reward: string;
   referee_reward: string;
 }
+export interface FirstVisitConfig {
+  reward: string;
+}
+export interface MinSpendConfig {
+  min_amount: number;
+  reward: string;
+}
+export interface MonthlyVisitsConfig {
+  visits_required: number;
+  reward: string;
+}
 
 export type CampaignConfig =
   | PunchCardConfig
@@ -41,7 +62,10 @@ export type CampaignConfig =
   | BirthdayConfig
   | StreakConfig
   | CashbackConfig
-  | ReferralConfig;
+  | ReferralConfig
+  | FirstVisitConfig
+  | MinSpendConfig
+  | MonthlyVisitsConfig;
 
 // ─── Tablas de la base de datos ─────────────────────────────
 export interface Database {
@@ -82,12 +106,23 @@ export interface Database {
         Insert: CustomerQrTokenInsert;
         Update: CustomerQrTokenUpdate;
       };
+      reward_qr_tokens: {
+        Row: RewardQrToken;
+        Insert: RewardQrTokenInsert;
+        Update: RewardQrTokenUpdate;
+      };
       push_tokens: {
         Row: PushToken;
         Insert: PushTokenInsert;
         Update: PushTokenUpdate;
       };
+      reward_catalog_items: {
+        Row: RewardCatalogItem;
+        Insert: RewardCatalogItemInsert;
+        Update: RewardCatalogItemUpdate;
+      };
     };
+
     Functions: {
       add_stamp: {
         Args: {
@@ -99,16 +134,34 @@ export interface Database {
         };
         Returns: AddStampResult;
       };
-      redeem_reward: {
-        Args: {
-          p_reward_id: string;
-          p_redeemed_by: string;
-        };
+      create_reward_token: {
+        Args: { p_reward_id: string };
+        Returns: CreateRewardTokenResult;
+      };
+      validate_reward_token: {
+        Args: { p_token: string };
+        Returns: ValidateRewardTokenResult;
+      };
+      redeem_reward_token: {
+        Args: { p_token: string };
         Returns: RedeemRewardResult;
+      };
+      set_campaign_status: {
+        Args: { p_campaign_id: string; p_status: CampaignStatus };
+        Returns: SetCampaignStatusResult;
+      };
+      redeem_catalog_item: {
+        Args: { p_item_id: string };
+        Returns: RedeemCatalogItemResult;
+      };
+      claim_birthday_reward: {
+        Args: Record<string, never>;
+        Returns: ClaimBirthdayRewardResult;
       };
     };
   };
 }
+
 
 // ─── Profile ────────────────────────────────────────────────
 export interface Profile {
@@ -119,6 +172,8 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   birth_date: string | null;
+  referral_code: string | null;
+  referred_by: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -140,6 +195,7 @@ export interface Business {
   website: string | null;
   logo_url: string | null;
   cover_url: string | null;
+  card_color: string | null;
   latitude: number | null;
   longitude: number | null;
   is_active: boolean;
@@ -160,6 +216,9 @@ export interface Campaign {
   reward_description: string;
   image_url: string | null;
   is_active: boolean;
+  status: CampaignStatus;
+  ended_at: string | null;
+  archived_at: string | null;
   start_date: string | null;
   end_date: string | null;
   max_redemptions: number | null;
@@ -222,6 +281,27 @@ export interface Reward {
 export type RewardInsert = Omit<Reward, 'id' | 'redeemed_at' | 'redeemed_by' | 'created_at'>;
 export type RewardUpdate = Partial<Pick<Reward, 'status' | 'redeemed_at' | 'redeemed_by'>>;
 
+// ─── Reward Catalog Item (catálogo de puntos) ───────────────
+export interface RewardCatalogItem {
+  id: string;
+  campaign_id: string;
+  business_id: string;
+  name: string;
+  description: string | null;
+  points_cost: number;
+  image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+export type RewardCatalogItemInsert = Pick<
+  RewardCatalogItem,
+  'campaign_id' | 'business_id' | 'name' | 'description' | 'points_cost' | 'image_url'
+>;
+export type RewardCatalogItemUpdate = Partial<
+  Pick<RewardCatalogItem, 'name' | 'description' | 'points_cost' | 'image_url' | 'is_active'>
+>;
+
+
 // ─── QR Token ───────────────────────────────────────────────
 export interface CustomerQrToken {
   id: string;
@@ -233,6 +313,18 @@ export interface CustomerQrToken {
 }
 export type CustomerQrTokenInsert = Pick<CustomerQrToken, 'customer_id'>;
 export type CustomerQrTokenUpdate = Pick<CustomerQrToken, 'used'>;
+
+// ─── Reward QR Token (canje) ────────────────────────────────
+export interface RewardQrToken {
+  id: string;
+  reward_id: string;
+  token: string;
+  expires_at: string;
+  used: boolean;
+  created_at: string;
+}
+export type RewardQrTokenInsert = Pick<RewardQrToken, 'reward_id'>;
+export type RewardQrTokenUpdate = Pick<RewardQrToken, 'used'>;
 
 // ─── PushToken ──────────────────────────────────────────────
 export interface PushToken {
@@ -258,12 +350,80 @@ export interface AddStampResult {
 export interface RedeemRewardResult {
   success: boolean;
   message?: string;
+  reward_id?: string;
+  error?: RewardTokenError | string;
+}
+
+export type RewardTokenError =
+  | 'unauthorized'
+  | 'not_found'
+  | 'used'
+  | 'expired'
+  | 'already_redeemed';
+
+export interface CreateRewardTokenResult {
+  success: boolean;
+  token?: string;
+  expires_at?: string;
+  error?: RewardTokenError | string;
+}
+
+export interface ValidateRewardTokenResult {
+  success: boolean;
+  reward?: Reward;
+  campaign?: Campaign;
+  profile?: Profile;
+  error?: RewardTokenError | string;
+}
+
+export interface SetCampaignStatusResult {
+  success: boolean;
+  error?: 'unauthorized' | 'invalid_status' | 'not_found' | string;
+}
+
+export type RedeemCatalogItemError =
+  | 'unauthorized'
+  | 'not_found'
+  | 'inactive'
+  | 'campaign_archived'
+  | 'no_card'
+  | 'insufficient_points';
+
+export interface RedeemCatalogItemResult {
+  success: boolean;
+  reward_id?: string;
+  points_left?: number;
+  error?: RedeemCatalogItemError | string;
+}
+
+export interface ClaimBirthdayRewardResult {
+  success: boolean;
+  rewards_created?: Array<{ campaign_id: string; reward_id: string }>;
   error?: string;
 }
 
+export type UseReferralCodeError =
+  | 'unauthorized'
+  | 'invalid_code'
+  | 'self_referral'
+  | 'already_referred';
+
+export interface UseReferralCodeResult {
+  success: boolean;
+  referrer_id?: string;
+  rewards_created?: Array<{
+    campaign_id: string;
+    business_name: string;
+    referrer_reward_id: string | null;
+    referee_reward_id: string | null;
+  }>;
+  error?: UseReferralCodeError | string;
+}
+
+
 // ─── Tipos extendidos con joins ─────────────────────────────
 export interface CampaignWithBusiness extends Campaign {
-  businesses: Pick<Business, 'id' | 'name' | 'logo_url' | 'city' | 'category'>;
+  businesses: Pick<Business, 'id' | 'name' | 'logo_url' | 'cover_url' | 'card_color' | 'city' | 'category'>;
 }
 
 export interface LoyaltyCardWithCampaign extends LoyaltyCard {
