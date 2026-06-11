@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Env files
+.env*.local
+.env
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.tsbuildinfo
+
+# NativeWind generated
+mobile/.cache/
+mobile/src/styles/nativewind-styles.generated.js
