@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de Privacidad — FideliApp</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1a1a;
+      background: #fff;
+      line-height: 1.7;
+      padding: 0 16px;
+    }
+    .container { max-width: 740px; margin: 0 auto; padding: 48px 0 64px; }
+    .logo { color: #FF6B2B; font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; color: #111; }
+    .date { font-size: 13px; color: #888; margin-bottom: 40px; }
+    h2 { font-size: 16px; font-weight: 700; margin: 32px 0 10px; color: #111; }
+    p { margin-bottom: 12px; font-size: 15px; color: #333; }
+    ul { margin: 8px 0 12px 20px; }
+    li { font-size: 15px; color: #333; margin-bottom: 6px; }
+    a { color: #FF6B2B; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .contact-box {
+      background: #fff5f0;
+      border: 1px solid #ffd5bb;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 40px;
+    }
+    hr { border: none; border-top: 1px solid #eee; margin: 40px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🏆 FideliApp</div>
+    <h1>Política de Privacidad</h1>
+    <p class="date">Última actualización: 14 de junio de 2026</p>
+
+    <p>
+      Bienvenido a <strong>FideliApp</strong>. Esta Política de Privacidad describe cómo recopilamos,
+      usamos y protegemos tu información personal cuando utilizas nuestra aplicación móvil
+      (disponible en Android e iOS) y nuestros servicios relacionados.
+    </p>
+    <p>
+      Al usar FideliApp, aceptas las prácticas descritas en esta política. Si no estás de acuerdo,
+      por favor no utilices la aplicación.
+    </p>
+
+    <h2>1. Información que recopilamos</h2>
+    <p>Recopilamos la siguiente información según el rol del usuario:</p>
+    <ul>
+      <li><strong>Datos de registro:</strong> nombre, dirección de correo electrónico y contraseña (almacenada de forma encriptada).</li>
+      <li><strong>Datos de perfil:</strong> foto de perfil, fecha de nacimiento (opcional, para campañas de cumpleaños).</li>
+      <li><strong>Datos de negocio</strong> (para cuentas de negocio): nombre del negocio, dirección, categoría, logo e imagen de fondo.</li>
+      <li><strong>Datos de uso:</strong> tarjetas de fidelización, sellos, premios ganados y canjeados, historial de visitas.</li>
+      <li><strong>Token de notificaciones push:</strong> para enviarte notificaciones relevantes sobre tus premios y campañas.</li>
+      <li><strong>Tokens QR temporales:</strong> generados en el momento del escaneo y válidos únicamente por 5 minutos.</li>
+    </ul>
+    <p>
+      No recopilamos datos de pago, ni accedemos a tus contactos, ubicación GPS, micrófono ni ningún
+      otro sensor del dispositivo más allá de la cámara (usada exclusivamente para escanear códigos QR).
+    </p>
+
+    <h2>2. Cómo usamos tu información</h2>
+    <ul>
+      <li>Crear y gestionar tu cuenta de usuario.</li>
+      <li>Registrar y mostrar tus tarjetas de fidelización, sellos y premios.</li>
+      <li>Permitir a los negocios escanearte el código QR para añadir sellos.</li>
+      <li>Enviarte notificaciones push sobre premios conseguidos o campañas relevantes.</li>
+      <li>Mejorar el funcionamiento y rendimiento de la aplicación.</li>
+      <li>Cumplir con obligaciones legales aplicables.</li>
+    </ul>
+
+    <h2>3. Base legal del tratamiento (RGPD)</h2>
+    <p>
+      El tratamiento de tus datos se basa en:
+    </p>
+    <ul>
+      <li><strong>Ejecución de un contrato:</strong> para prestarte el servicio de FideliApp que has solicitado.</li>
+      <li><strong>Consentimiento:</strong> para notificaciones push y comunicaciones opcionales. Puedes revocar tu consentimiento en cualquier momento desde los ajustes de la app.</li>
+      <li><strong>Interés legítimo:</strong> para la seguridad de la plataforma y prevención del fraude.</li>
+    </ul>
+
+    <h2>4. Compartición de datos con terceros</h2>
+    <p>No vendemos ni alquilamos tus datos personales. Únicamente los compartimos con:</p>
+    <ul>
+      <li>
+        <strong>Supabase</strong> — proveedor de base de datos e infraestructura (alojamiento en la Unión Europea).
+        <a href="https://supabase.com/privacy" target="_blank">Política de privacidad de Supabase</a>.
+      </li>
+      <li>
+        <strong>Expo / EAS</strong> — plataforma de distribución y notificaciones push.
+        <a href="https://expo.dev/privacy" target="_blank">Política de privacidad de Expo</a>.
+      </li>
+      <li>
+        <strong>Google Firebase Cloud Messaging (FCM)</strong> — servicio de envío de notificaciones push en Android.
+        <a href="https://firebase.google.com/support/privacy" target="_blank">Política de privacidad de Google</a>.
+      </li>
+    </ul>
+
+    <h2>5. Almacenamiento y seguridad</h2>
+    <p>
+      Todos los datos se almacenan en servidores seguros proporcionados por Supabase, con cifrado en tránsito (TLS)
+      y en reposo. La autenticación usa tokens JWT de corta duración. Las políticas de seguridad a nivel de fila
+      (Row Level Security) garantizan que cada usuario solo pueda acceder a sus propios datos.
+    </p>
+    <p>
+      Los tokens QR se eliminan automáticamente tras su uso o al expirar (5 minutos), y no pueden reutilizarse.
+    </p>
+
+    <h2>6. Retención de datos</h2>
+    <p>
+      Conservamos tus datos mientras tu cuenta esté activa. Si eliminas tu cuenta, tus datos personales
+      serán eliminados en un plazo máximo de 30 días, excepto aquellos que debamos conservar por
+      obligación legal.
+    </p>
+
+    <h2>7. Tus derechos (RGPD)</h2>
+    <p>Si resides en el Espacio Económico Europeo, tienes derecho a:</p>
+    <ul>
+      <li><strong>Acceso:</strong> solicitar una copia de tus datos personales.</li>
+      <li><strong>Rectificación:</strong> corregir datos inexactos o incompletos.</li>
+      <li><strong>Supresión ("derecho al olvido"):</strong> solicitar la eliminación de tus datos.</li>
+      <li><strong>Portabilidad:</strong> recibir tus datos en un formato estructurado y de uso común.</li>
+      <li><strong>Oposición:</strong> oponerte al tratamiento basado en interés legítimo.</li>
+      <li><strong>Limitación:</strong> solicitar que limitemos el tratamiento de tus datos.</li>
+    </ul>
+    <p>
+      Para ejercer cualquiera de estos derechos, contáctanos en
+      <a href="mailto:privacidad@fideliapp.com">privacidad@fideliapp.com</a>.
+    </p>
+
+    <h2>8. Permisos de la aplicación</h2>
+    <ul>
+      <li><strong>Cámara:</strong> exclusivamente para escanear códigos QR de clientes (solo para cuentas de negocio).</li>
+      <li><strong>Notificaciones:</strong> para informarte de premios, sellos y novedades. Puedes desactivarlas en cualquier momento.</li>
+      <li><strong>Galería / Almacenamiento:</strong> para que los negocios puedan subir su logo e imagen de fondo.</li>
+    </ul>
+
+    <h2>9. Menores de edad</h2>
+    <p>
+      FideliApp no está dirigida a menores de 14 años. No recopilamos conscientemente datos
+      de menores de esa edad. Si crees que un menor nos ha proporcionado información personal,
+      contáctanos para eliminarla.
+    </p>
+
+    <h2>10. Cambios en esta política</h2>
+    <p>
+      Podemos actualizar esta Política de Privacidad periódicamente. Te notificaremos de cambios
+      significativos a través de la aplicación o por correo electrónico. El uso continuado de
+      FideliApp tras la publicación de cambios implica tu aceptación.
+    </p>
+
+    <hr />
+
+    <div class="contact-box">
+      <h2 style="margin-top: 0;">📬 Contacto</h2>
+      <p>
+        Si tienes preguntas sobre esta política o quieres ejercer tus derechos, contáctanos:
+      </p>
+      <p>
+        <strong>FideliApp</strong><br />
+        Email: <a href="mailto:privacidad@fideliapp.com">privacidad@fideliapp.com</a><br />
+        Soporte general: <a href="mailto:soporte@fideliapp.com">soporte@fideliapp.com</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
