@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solicitud de eliminación de cuenta — FideliApp</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1a1a;
+      background: #f9f9f9;
+      line-height: 1.7;
+      padding: 0 16px;
+    }
+    .container { max-width: 600px; margin: 0 auto; padding: 48px 0 64px; }
+    .logo { color: #FF6B2B; font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #111; }
+    .subtitle { font-size: 15px; color: #555; margin-bottom: 36px; }
+
+    .info-box {
+      background: #fff5f0;
+      border: 1px solid #ffd5bb;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 28px;
+      font-size: 14px;
+      color: #7a3010;
+    }
+    .info-box strong { color: #c0390b; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .field { margin-bottom: 20px; }
+    input[type="email"],
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #1a1a1a;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input[type="email"]:focus,
+    input[type="text"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #FF6B2B;
+    }
+    textarea { resize: vertical; min-height: 100px; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .checkbox-row input[type="checkbox"] {
+      margin-top: 3px;
+      accent-color: #FF6B2B;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .checkbox-row span {
+      font-size: 14px;
+      color: #444;
+      line-height: 1.5;
+    }
+
+    .submit-btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: #FF6B2B;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      font-family: inherit;
+    }
+    .submit-btn:hover { background: #e55c1e; }
+    .submit-btn:active { transform: scale(0.98); }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 28px 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    /* Pantalla de éxito (oculta por defecto) */
+    #success-screen {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    #success-screen .checkmark { font-size: 64px; margin-bottom: 16px; }
+    #success-screen h2 { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 10px; }
+    #success-screen p { font-size: 15px; color: #555; line-height: 1.6; }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: #FF6B2B;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    .note {
+      margin-top: 28px;
+      font-size: 13px;
+      color: #888;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .note a { color: #FF6B2B; text-decoration: none; }
+    .note a:hover { text-decoration: underline; }
+
+    hr { border: none; border-top: 1px solid #eee; margin: 32px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🏆 FideliApp</div>
+    <h1>Solicitud de eliminación de cuenta</h1>
+    <p class="subtitle">
+      Completa el formulario y procesaremos tu solicitud en un plazo máximo de <strong>30 días</strong>.
+    </p>
+
+    <div class="card">
+
+      <!-- Aviso informativo -->
+      <div class="info-box">
+        ⚠️ <strong>Importante:</strong> La eliminación de tu cuenta es <strong>permanente e irreversible</strong>.
+        Se borrarán todos tus datos personales, tarjetas de fidelización, sellos y premios acumulados.
+        Los premios ya canjeados no se podrán recuperar.
+      </div>
+
+      <!-- Formulario -->
+      <form id="delete-form" onsubmit="handleSubmit(event)">
+
+        <div class="field">
+          <label for="email">Correo electrónico de la cuenta *</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="tu@email.com"
+            required
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="field">
+          <label for="name">Nombre completo *</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Tu nombre tal como aparece en la app"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="account-type">Tipo de cuenta *</label>
+          <select id="account-type" name="account-type" required>
+            <option value="" disabled selected>Selecciona una opción…</option>
+            <option value="client">👤 Cliente</option>
+            <option value="business">🏪 Negocio</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="reason">Motivo de la solicitud (opcional)</label>
+          <select id="reason" name="reason">
+            <option value="" selected>Prefiero no indicarlo</option>
+            <option value="no-use">Ya no uso la aplicación</option>
+            <option value="privacy">Privacidad / protección de datos</option>
+            <option value="switch">Cambio a otra cuenta</option>
+            <option value="other">Otro motivo</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="comments">Comentarios adicionales (opcional)</label>
+          <textarea
+            id="comments"
+            name="comments"
+            placeholder="¿Hay algo que quieras que sepamos antes de procesar tu solicitud?"
+          ></textarea>
+        </div>
+
+        <hr />
+
+        <!-- Confirmación -->
+        <div class="checkbox-row">
+          <input type="checkbox" id="confirm" name="confirm" required />
+          <span>
+            Entiendo que la eliminación de mi cuenta es <strong>permanente</strong> y que perderé
+            todos mis datos, tarjetas, sellos y premios acumulados en FideliApp.
+          </span>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          Enviar solicitud de eliminación →
+        </button>
+      </form>
+
+      <!-- Pantalla de éxito -->
+      <div id="success-screen">
+        <div class="checkmark">✅</div>
+        <h2>Solicitud recibida</h2>
+        <p>
+          Hemos recibido tu solicitud de eliminación de cuenta para
+          <strong id="success-email"></strong>.<br /><br />
+          Procesaremos tu solicitud en un plazo máximo de <strong>30 días naturales</strong>.
+          Recibirás una confirmación por correo electrónico cuando la eliminación se haya completado.
+        </p>
+        <a href="privacy-policy.html" class="back-link">← Ver política de privacidad</a>
+      </div>
+
+    </div>
+
+    <p class="note">
+      ¿Tienes preguntas? Contáctanos en
+      <a href="mailto:privacidad@fideliapp.com">privacidad@fideliapp.com</a><br />
+      También puedes consultar nuestra
+      <a href="privacy-policy.html">Política de Privacidad</a>.
+    </p>
+  </div>
+
+  <script>
+    function handleSubmit(event) {
+      event.preventDefault();
+
+      const email    = document.getElementById('email').value.trim();
+      const name     = document.getElementById('name').value.trim();
+      const type     = document.getElementById('account-type').value;
+      const reason   = document.getElementById('reason').value;
+      const comments = document.getElementById('comments').value.trim();
+
+      // Construir el mailto con los datos del formulario
+      const subject = encodeURIComponent('Solicitud de eliminación de cuenta — FideliApp');
+      const body = encodeURIComponent(
+        'SOLICITUD DE ELIMINACIÓN DE CUENTA\n' +
+        '====================================\n\n' +
+        'Email de la cuenta: ' + email + '\n' +
+        'Nombre completo: ' + name + '\n' +
+        'Tipo de cuenta: ' + (type === 'client' ? 'Cliente' : 'Negocio') + '\n' +
+        'Motivo: ' + (reason || 'No indicado') + '\n' +
+        'Comentarios: ' + (comments || 'Ninguno') + '\n\n' +
+        '====================================\n' +
+        'Solicitud enviada desde el formulario web de FideliApp.'
+      );
+
+      const mailtoUrl = 'mailto:privacidad@fideliapp.com?subject=' + subject + '&body=' + body;
+
+      // Abrir el cliente de correo
+      window.location.href = mailtoUrl;
+
+      // Mostrar la pantalla de éxito
+      setTimeout(function() {
+        document.getElementById('delete-form').style.display = 'none';
+        document.getElementById('success-email').textContent = email;
+        document.getElementById('success-screen').style.display = 'block';
+      }, 500);
+    }
+  </script>
+</body>
+</html>
